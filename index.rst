@@ -8,7 +8,7 @@ Abstract
 The First-Look Analysis and Feedback Functionality (FAFF) working group, identified the need for a service that is capable of executing user-defined operations/computation following user-defined rules.
 This service has been referred  to as Catcher.
 In essence, the Catcher is not that different from the Watcher or other stream processing off-the-shelf technologies like Kapacitor.
-This technote explores the idea of using influx2.0 new stream processing capabilities to as an alternative implementation for the Catcher.
+This technote explores the idea of using InfluxDB OSS 2.x new task engine as an alternative implementation for the Catcher.
 
 Introduction
 ============
@@ -19,22 +19,22 @@ One of the finding of the First-Look Analysis and Feedback Functionality (FAFF) 
 
 The original proposal from the FAFF working group was to develop a Commandable SAL Component (CSC), similar to the Watcher, that would provide be capable of monitoring data from the system and trigger certain actions (e.g. perform some computation and/or generate reports) based on some pre-defined conditions.
 
-Following additional discussions, we have decided to experiment with an alternative approach, replacing the CSC with an off-the-shelf solution provided by the Engineering Facility Database (EFD).
+Following additional discussions, we have decided to experiment with an alternative approach, replacing the CSC with an off-the-shelf solution provided by provided by Sasquatch (see :sqr:`068` :cite:`SQR-068`).
 
 As shown in :sqr:`034` :cite:`SQR-034`, the EFD has of an `influxDB <https://www.influxdata.com/>`__ time series database, that stores the data produced by the system.
-The release of influx2.0, brings a number of important updates, amongst which two are relevant for stream processing; `flux`_ and `influxDB task`_.
+As discussed in :sqr:`068` :cite:`SQR-068`, Sasquatch is based on InfluxDB OSS 2.x, a time series database. The new version of InfluxDB brings a number of important updates, amongst which two are relevant for stream processing; `Flux`_ and `InfluxDB task`_.
 
-.. _flux: https://docs.influxdata.com/flux/v0.x/
-.. _influxDB task: https://docs.influxdata.com/influxdb/cloud/process-data/get-started/
+.. _Flux: https://docs.influxdata.com/flux/v0.x/
+.. _InfluxDB task: https://docs.influxdata.com/influxdb/v2.2/process-data/get-started/
 
 
-`flux`_ is a new functional data scripting language that is designed to process data streams.
+`Flux`_ is a new functional data scripting language that is designed to process data streams.
 It contains extensive libraries that allows users to express complex operations, compatible with what can be done with programming languanges.
-Furthermore, `influxDB task`_ provides a way to schedule `flux`_ scripts.
+Furthermore, `InfluxDB task`_ provides a way to schedule `Flux`_ scripts.
 
 
-Each Catcher "rule" or "alarm" would be comprised of an `influxDB task`_ to execute a user defined `flux`_ script periodically.
-The `flux`_ script performs a set of actions/calculations based on EFD data, additional processes/tasks can be triggered depending on the results of these calculations and results can be stored in the EFD for future reference.
+Each Catcher "rule" or "alarm" would be comprised of an `InfluxDB task`_ to execute a user defined `Flux`_ script periodically.
+The `Flux`_ script performs a set of actions/calculations based on EFD data, additional processes/tasks can be triggered depending on the results of these calculations and results can be stored in the EFD for future reference.
 
 Below we describe how some of the Catcher functionality would be implemented.
 
@@ -43,8 +43,8 @@ Alarms
 
 One of the key features expected from the Catcher was the ability to issue alarms that can be displayed in LOVE.
 One option to support this feature would be to create a custom LOVE producer that can be interacted with using a REST API.
-The alert information would be persisted in the EFD by the `flux`_ script, which would then post a message to the producer of the new alert.
-The producer would then read the alert informatino from the EFD and display it.
+The alert information would be persisted in Sasquatch by the `Flux`_ script, which would then post a message to the LOVE producer of the new alert.
+The producer would then read the alert information from the EFD and display it.
 
 Process Image Data
 ------------------
@@ -68,8 +68,10 @@ This could still be achieved using a similar solution or relying on a service li
 Service Architecture
 ====================
 
-Catcher would be a service built on top of existing influxDB and LSP functionality, with ancillary support from LOVE, the OCPS backend and LSP infrastucture.
-It will mostly rely on `flux`_ scripts and `influxDB task`_ to execute operations based on data streams from the EFD.
+existing RSP functionalities... 
+
+Catcher would be a service built on top of existing RSP functionalities, with ancillary support from LOVE, the OCPS backend and RSP infrastucture (InfluxDB is part of Sasquatch which is part of the RSP).
+It will mostly rely on `Flux`_ scripts and `InfluxDB task`_ to execute operations based on data streams from the EFD bucket.
 The results can be persisted in the EFD, as well as summary information to be shown on LOVE.
 
 
