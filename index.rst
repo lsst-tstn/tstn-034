@@ -21,7 +21,6 @@ The original proposal from the FAFF working group was to develop a Commandable S
 
 Following additional discussions, we have decided to experiment with an alternative approach, replacing the CSC with an off-the-shelf solution provided by provided by Sasquatch (see :sqr:`068` :cite:`SQR-068`).
 
-As shown in :sqr:`034` :cite:`SQR-034`, the EFD has of an `influxDB <https://www.influxdata.com/>`__ time series database, that stores the data produced by the system.
 As discussed in :sqr:`068` :cite:`SQR-068`, Sasquatch is based on InfluxDB OSS 2.x, a time series database. The new version of InfluxDB brings a number of important updates, amongst which two are relevant for stream processing; `Flux`_ and `InfluxDB task`_.
 
 .. _Flux: https://docs.influxdata.com/flux/v0.x/
@@ -53,8 +52,9 @@ Another important feature of the Catcher was the capability to process camera im
 The OCPS is a CSC that is capable of executing DM-pipeline processes.
 It is going to be key in allowing remote processing of Main Camera data during commissioning and operations.
 
-If the Catcher is not a CSC, it won't be able to interact direcly with OCPS to process image data.
+Nevertheless, if the Catcher is not a CSC it won't be able to interact direcly with OCPS to process image data.
 One alternative would be to interact with the OCPS remote backend direcly, instead of going through the CSC.
+For that, the OCPS backend implements a REST API that we could leverage to post requests and receive responses back.
 
 Generate reports
 ----------------
@@ -68,12 +68,9 @@ This could still be achieved using a similar solution or relying on a service li
 Service Architecture
 ====================
 
-existing RSP functionalities... 
-
-Catcher would be a service built on top of existing RSP functionalities, with ancillary support from LOVE, the OCPS backend and RSP infrastucture (InfluxDB is part of Sasquatch which is part of the RSP).
+The Catcher would be a service built on top of RSP functionalities (some existing and others still under development), with ancillary support from LOVE and OCPS.
 It will mostly rely on `Flux`_ scripts and `InfluxDB task`_ to execute operations based on data streams from the EFD bucket.
-The results can be persisted in the EFD, as well as summary information to be shown on LOVE.
-
+The results can be persisted in the EFD, along with summary information to be displayed by LOVE.
 
 .. figure:: /_static/Catcher.png
    :name: fig-catcher
