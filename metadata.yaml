@@ -18,6 +18,7 @@ doc_title: "Catcher design"
 # Author names, ordered as a list. Each author name should be formatted as 'First Last'
 authors:
   - "Tiago Ribeiro"
+  - "Patrick Ingraham"
   - "Angelo Fausti"
 
 # Current document revision date, YYYY-MM-DD
@@ -38,7 +39,9 @@ authors:
 copyright: "2022, Association of Universities for Research in Astronomy, Inc. (AURA)"
 
 # Description. A short, 1-2 sentence statemement used by document indices.
-description: "This technote contains design considerations for the Catcher, an event-driven processing component for the Rubin Observatory Control System. We briefly review the existing functionality of the system and discuss the use case for the Catcher. The idea originated from the First-Look Analysis and Feedback Functionality (FAFF) working group, and a more in-depth analysis of the use cases can be found in their reports."
+description: >- 
+  This technote contains design considerations for the Catcher, an event-driven processing component for the Rubin Observatory Control System. We briefly review the existing functionality of the system and discuss the use case for the Catcher.
+  The idea originated from the First-Look Analysis and Feedback Functionality (FAFF) working group, and a more in-depth analysis of the use cases can be found in their reports.
 
 # Abstract, if available
 # abstract: >

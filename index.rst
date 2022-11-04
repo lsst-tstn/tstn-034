@@ -5,27 +5,28 @@
 Abstract
 ========
 
-This technote contains design considerations for the Catcher, an event-driven processing component for the Rubin Observatory Control System.
-We briefly review the existing functionality of the system and discuss the use case for the Catcher.
+This technote contains design considerations for the Catcher, an event-driven processing component for the Rubin Observatory Control System (RubinOCS).
+We briefly review the existing functionality of the system and discuss the use case for the ``Catcher``.
 The idea originated from the First-Look Analysis and Feedback Functionality (FAFF) working group, and a more in-depth analysis of the use cases can be found in their reports.
 
 
 Introduction
 ============
 
-One of the finding of the First-Look Analysis and Feedback Functionality (FAFF) working group :sitcomtn:`025` :cite:`SITCOMTN-025`, was the need for a service to ...
+One of the findings of the First-Look Analysis and Feedback Functionality (FAFF) working group :sitcomtn:`025` :cite:`SITCOMTN-025`, was the need for a service to ...
 
    handle the low-level coordination of identifying when a specific condition is met, then launching and monitoring an analysis process.
 
-The idea is basically to have a component capable of executing event-driven processing and report generation.
+The idea is to have a component, the ``Catcher``, capable of executing event-driven processing and report generation.
 
-The Rubin Observatory Control System currently contains a ``Watcher`` CSC that is capable of generating alerts from user defined rules (e.g. event-driven alerts).
-Moreover, the ``ScriptQueue`` and ``OCPS`` CSCs are both able to execute command-driven processes.
-While the ``ScriptQueue`` is tailored towards control system operations (e.g. moving the telescope, taking data, etc.), the ``OCPS`` is dedicated to executing DM-pipeline tasks processes.
-The missing piece of functionality is the capability of mixing a ``Watcher``-like behavior (event-processing) with ``ScriptQueue``/``OCPS``-like behavior.
+The RubinOCS currently contains a ``Watcher`` CSC that is capable of generating event driven alerts from user-defined rules (e.g. event-driven alerts).
+It also includes the ``ScriptQueue`` and ``OCPS`` CSCs which are both able to execute command-driven processes.
+While the ``ScriptQueue`` is tailored towards control system operations (e.g. moving the telescope, taking data, etc.), the ``OCPS`` is dedicated to executing DM pipeTask.
+In a sense, the missing piece of functionality is the capability of mixing a ``Watcher``-like behavior (event-processing) with ``ScriptQueue``/``OCPS``-like behavior.
 Furthermore, we are also interested in generating comprehensive reports from the results of these processes and alarms for particular conditions.
 
-The following are the key functionality we are looking for in the ``Catcher``.
+A key functionality of the ``Catcher``, that differentiates it from the ``Watcher``, is the ability to execute an analysis process once a certain condition is met.
+In the following sections we will explore the key functionality we are looking for in the ``Catcher``.
 
 Commandable SAL Component
 -------------------------
@@ -41,30 +42,30 @@ Using our experience with the ``Watcher`` it seems like having an indexed CSC wo
 Some reasons for this are:
 
 *  A single CSC means there is a single event for each condition.
-   If the CSC is handling multiple conditions the information ends up getting "lost" in the data queue and it is not easily digestible by LOVE and other systems.
+   If the CSC is handling multiple conditions, the information ends up getting "lost" in the data queue and it is not easily digestible by LOVE and other systems.
    Whereas, if each instance of the ``Catcher`` handles a single condition/rule, events are well separated for each condition.
 
-*  In the single CSC scenario, adding/removing/updating a particular rule requires restarting the entire system.
+*  In the single CSC scenario, adding/removing/updating a particular rule requires restarting the entire CSC.
    In the indexed component scenario, it only requires bringing in a new instance or removing/updating an existing one.
 
-To control the configuration of each ``Catcher`` instance, we can adopt an indexed-based configuration format, used by some CSCs in the system already.
+To control the configuration of each ``Catcher`` instance, we can adopt an indexed-based configuration format, used by some CSCs in the system already (e.g. the `DIMM CSC configuration <https://github.com/lsst-ts/ts_config_ocs/blob/develop/DIMM/v2/_summit.yaml>`__).
 Basically we map an index to a CSC configuration.
 All configurations resides in the same configuration file and the CSC decides which configuration to load based on its index.
 
-Rules
------
+Triggering Mechanism
+--------------------
 
-The first thing the ``Catcher`` must be able to do is have a set of user-defined "activation" rules.
-This basically consists of an input data stream that will be processed according to some user-defined code and be activated according to some user-define rule.
+The first thing the ``Catcher`` must be able to do is have a set of user-defined "triggers".
+This basically consists of a set of input data stream that is processed according to some user-defined code and is activated according to some user-define condition.
 
-For example, one might be interested in a rule that activates when a new image finishes reading (camera publishes endReadout) or something a bit more complicated like activate when a new image finishes reading, the telescope is pointing in the direction of the wind and wind speed is above a certain threshold.
+For example, one might be interested in a trigger that activates when a new image finishes reading (camera publishes endReadout) or something a bit more complicated like activate when a new image finishes reading, the telescope is pointing in the direction of the wind and wind speed is above a certain threshold.
 
-In terms of design, we have two different options we could implement; configuration-based or programmatic-based rules.
+In terms of design, we have two different options we could implement; configuration-based or programmatic-based triggers.
 
-Configuration-based rules, are based on simple rules that can be combined together to form more complex behavior.
-For example, we could a rule that receives a component name and event name and is activated every time that event is published or a slightly more complicated rule that takes 2 components/topic/attributes and check if their values are within a certain threshold.
+Configuration-based triggers, are based on simple conditions that can be combined together to form more complex behavior.
+For example, we could have a ``monitorEvent`` condition that receives a component name and event name and is activated every time that event is published or a slightly more complicated ``compareTopics`` condition that takes 2 components/topic/attributes and check if their values are within a certain threshold.
 
-The configuration for a rule that would monitor an event would look something like this:
+The configuration for a trigger that would monitor an event would look something like this:
 
 .. code-block:: yaml
 
@@ -86,7 +87,10 @@ Combining rules would be something like:
          topic2: WeatherStation.windDirection.value
          threshold: 1.0
 
-The advantage of this approach is that, once a sufficient number of rules are developed, including new triggers is a matter of creating a new configuration.
+In the two examples above, ``monitorEvent`` and ``compareTopics`` are general-purposed, pre-defined triggers available in the ``Catcher`` codebase.
+These would adhere to a specific API, sub-classing a base class with a well defined interface.
+
+The advantage of this approach is that, once a sufficient number of conditions are developed, adding new triggers is a matter of creating a new configuration.
 
 Alternatively, the programmatic-based rules relies on having all the trigger logic developed under a single operation.
 For example, we could have a rule to monitor the end readout event from the camera and a rule that monitors the end readout event from the camera and compare the position of the telescope with the wind.
@@ -97,9 +101,10 @@ Any new alarm requires code changes.
 Analysis Process
 ----------------
 
-A key functionality of the ``Catcher``, that differentiates it from the ``Watcher``, is the ability to execute an analysis process once a certain condition is met.
+As mentioned above, the ability to execute an analysis process once a certain condition is met is one of the  key functionalities that differentiates the ``Catcher`` from the ``Watcher``.
 In general, we assume that these analysis will consist of lightweight computations.
 Whenever possible, the computation should be offloaded to the OCPS.
+Because the OCPS is designed to execute DM pipeTasks, these will mostly consist of image-related processing.
 It is likely that the data processed by the rule will be relevant to the downstream processing, so it should  be made available to it as well.
 
 These processing routines should be developed in the ``Catcher`` codebase using a common framework, similar to that provided by SAL Scripts (e.g. a base class with a well defined interface).
@@ -128,13 +133,13 @@ We can also consider to borrow the alarm escalation model from the ``Watcher``.
 Generate reports
 ----------------
 
-The ``Catcher`` should also be able to generate reports, with graphs and additional lightweight computation.
+The ``Catcher`` should also be able to generate reports, with graphs and additional lightweight computations.
 
 One of the initial ideas was to rely on parameterized Jupyter notebooks that would be processed using a `papermill`_-like application, converted to a webpage and rendered online so users could inspect the results, and use as reference for additional followup.
 
 .. _papermill: https://papermill.readthedocs.io/en/latest/
 
-This could still be achieved using a similar solution or relying on a service like noteburst :sqr:`065` :cite:`SQR-065` and Times Square :sqr:`066` :cite:`SQR-066` to execute parameterized notebooks using a web request and publishing the results afterwards.
+This could still be achieved using a similar solution or relying on a service like Noteburst :sqr:`065` :cite:`SQR-065` and Times Square :sqr:`066` :cite:`SQR-066` to execute parameterized notebooks using a web request and publishing the results afterwards.
 
 Another alternative is to implement a template system, where the user writes a template report with placeholders for text and images.
 Then, the report can be generated by executing code to produce the placeholder values and images and exporting the report.
@@ -154,6 +159,7 @@ In summary our proposal is:
 *  A report is generated using the output of the analysis process.
 *  An alarm is issued indicating the severity level and information about how to access the report.
 *  Whether a report is generated and/or an alarm is published every time the rule is activated or only at certain severity levels will be a configuration parameter.
+*  Information about each instance of the ``Catcher`` operation can be logged using the standard log facility, which makes sure the data is stored in the EFD and available on LOVE.
 
 Interface
 ---------
@@ -166,14 +172,13 @@ Commands
 ``mute``
 
    Mute this instance of the ``Catcher``.
-   It will continue to process the data stream and generating reports, but will not issue new alarm unless they have severity higher than the one specified.
+   It will continue to process the data stream and generating reports, but will not issue new alarm unless they have severity higher than the values specified in the ``severity`` parameter
 
    Contains the following parameters:
 
    ``severity``
 
       Severity to mute alarms.
-      Alarms will only be issued if severity is higher than this value.
    
    ``duration``
 
@@ -215,6 +220,7 @@ Events
 ``alarm``
 
    Alarm issued when an analysis process results in a severity level above configured threshold.
+   This is event is published after the analysis process is done and only if the alarm severity level is above the configured threshold.
 
    ``severity``
    
@@ -294,20 +300,21 @@ Configuration
 -------------
 
 The ``Catcher`` configuration will contain the configuration for all the rules and the CSC picks up a configuration based on its index.
-The following is an example of having 2 instances of the ``Catcher``, with index 1 and 2.
-The configuration is inspired by the use-cases presented in  the `FAFFv2 <https://sitcomtn-037.lsst.io/#deliverable-7-catcher-development>`__ report.
+The following is an example of having 3 instances of the ``Catcher``, with index 1, 2 and 3.
+The first two configurations are inspired by the use-cases presented in  the `FAFFv2 <https://sitcomtn-037.lsst.io/#deliverable-7-catcher-development>`__ report the third configuration is an example of a more complex rule containing chained conditions.
 
 .. code-block:: yaml
 
    1:
       rule:
-         monitor:
-            topic: WeatherStation.tel_windDirection.value
+         monitor_pool:
             interval: 60.0
-            threshold:
-               max: 10.0
+            -
+               topic: WeatherStation.tel_windSpeed.value
+               threshold:
+                  max: 10.0
       analysis_process:
-         analyze_stream: WeatherStation.tel_windDirection.value
+         analyze_stream: WeatherStation.tel_windSpeed.value
             interval: 1800.0
             extrapolate_interval: 600.0
             threshold:
@@ -318,7 +325,7 @@ The configuration is inspired by the use-cases presented in  the `FAFFv2 <https:
       alarm_severity: warning  # Only issue alarm if warning level
    2:
       rule:
-         monitor_event:
+         monitor_async:
             component: ATCamera
             event: endReadout
       analysis_process:
@@ -329,6 +336,28 @@ The configuration is inspired by the use-cases presented in  the `FAFFv2 <https:
                critical: 2.0
             store_results: True
       report_severity: ok  # Always produce report
+      alarm_severity: warning  # Only issue alarm if warning level
+   3:
+      rule:
+         monitor_pool:
+            interval: 5.0
+            -
+               topic: WeatherStation.tel_windSpeed.value
+               threshold:
+                  max: 10.0
+         compare_topics:
+            topic1: ATMCS.tel_mount_AzEl_Encoders.azimuthCalculatedAngle
+            topic2: WeatherStation.windDirection.value
+            threshold: 1.0
+      analysis_process:
+         analyze_stream: WeatherStation.tel_windSpeed.value
+            interval: 1800.0
+            extrapolate_interval: 60.0
+            threshold:
+               ok: 15.0
+               warning: 20.0
+               critical: 30.0
+      report_severity: warning  # Only produce report if warning level
       alarm_severity: warning  # Only issue alarm if warning level
 
 
